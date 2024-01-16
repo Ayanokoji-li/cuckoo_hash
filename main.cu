@@ -9,83 +9,99 @@
 #include <stdlib.h>
 #include <string.h>
 
+class Cuckoo_hash;
+
 class Hash_function
 {
 private:
-    uint32_t XOR_val;
-    uint32_t right_shift;
-    uint32_t capacity_bits;
+    uint32_t m_function_num;
+    uint32_t *m_XOR_val;
+    uint32_t *m_right_shift;
+    uint32_t m_capacity_bits;
 
 public:
-    Hash_function(uint32_t capacity_bits) : capacity_bits(capacity_bits)
+    Hash_function(uint32_t capacity_bits, uint32_t function_num) : m_function_num(function_num), m_capacity_bits(capacity_bits)
     {
         std::random_device rd;
         std::mt19937 gen(rd());
         std::uniform_int_distribution<uint32_t> dis(0, (uint32_t)(-1));
-        XOR_val = dis(gen);
         std::uniform_int_distribution<uint32_t> dis2(0, 32 - capacity_bits);
-        right_shift = dis2(gen);
-    }
+        m_XOR_val = (uint32_t *)malloc(sizeof(uint32_t) * function_num);
+        m_right_shift = (uint32_t *)malloc(sizeof(uint32_t) * function_num);
 
-    uint32_t operator==(const Hash_function& other)
-    {
-        return (XOR_val == other.XOR_val) && (right_shift == other.right_shift) && (capacity_bits == other.capacity_bits);
-    }
-
-    uint32_t operator()(uint32_t key)
-    {
-        return (((key * key) ^ XOR_val) >> right_shift) % (1 << capacity_bits);
-    }
-};
-
-void chech_and_rebuild(Hash_function *function_arr, uint32_t function_num, uint32_t capacity_bits)
-{
-    for(uint64_t i = 1; i < function_num; i ++)
-    {
-        for(uint64_t j = 0; j < i ; j ++)
+        for(auto i = 0UL; i < function_num; i ++)
         {
-            if(function_arr[i] == function_arr[j])
-            {
-                function_arr[j] = Hash_function(capacity_bits);
-            }
+            m_XOR_val[i] = dis(gen);
+            m_right_shift[i] = dis2(gen);
         }
     }
+
+friend class Cuckoo_hash;
+};
+
+__forceinline__ __device__ uint32_t get_hash_res(int32_t input, uint32_t XOR_val, uint32_t right_shift, uint32_t capacity)
+{
+    return (((input * input) ^ XOR_val) >> right_shift) % capacity;
 }
+
+__global__ void get_hash(int32_t *arr, uint32_t len, uint32_t* XOR_val, uint32_t* right_shift, uint32_t table_num, uint32_t capacity)
+{
+    auto i = blockDim.x * blockIdx.x + threadIdx.x;
+    if(i < len)
+    {
+        for(auto j = 0; j < table_num; j++)
+        {
+            printf("arr[%d] hashed by func %d get %u\n", i, j, get_hash_res(arr[i], XOR_val[j], right_shift[j], capacity));
+        }
+        __syncthreads();
+    }
+}
+
+__global__ 
 
 class Cuckoo_hash
 {
 private:
-    uint32_t capacity_bits;
-    uint32_t capacity;
-    uint32_t table_num;
-    uint32_t **table;
-    Hash_function *functions;
+    uint32_t m_capacity_bits;
+    uint32_t m_capacity;
+    uint32_t m_table_num;
+    uint32_t *d_table;
+    Hash_function m_functions;
+    uint32_t *d_fun_XOR_val;
+    uint32_t *d_fun_right_shift;
+
 
 public:
-    Cuckoo_hash(uint32_t table_size_bit, uint32_t function_num): capacity_bits(table_size_bit), capacity(1 << table_size_bit), table_num(function_num)
+    Cuckoo_hash(uint32_t table_size_bit, uint32_t function_num): m_capacity_bits(table_size_bit), m_capacity(1 << table_size_bit), m_table_num(function_num), m_functions(m_capacity_bits, function_num)
     {
-        functions = (Hash_function*)malloc(sizeof(Hash_function) * function_num);
-        table = (uint32_t **)malloc(sizeof(uint32_t *) * table_num);
-        for(auto i = 0; i < function_num; i ++)
-        {
-            functions[i] = Hash_function(capacity_bits);
-            table[i] = (uint32_t *)malloc(sizeof(uint32_t) * capacity);
-            memset(table[i], 0, sizeof(uint32_t) * capacity);
-        }
-        chech_and_rebuild(functions, function_num, capacity_bits);
+
+        cudaMalloc((void **)&d_table, sizeof(uint32_t) * m_table_num * m_capacity);
+        cudaMemset(d_table, 0, sizeof(uint32_t) * m_capacity * m_table_num);
         
+        cudaMalloc((void **)&d_fun_right_shift, sizeof(uint32_t) * m_table_num);
+        cudaMalloc((void **)&d_fun_XOR_val, sizeof(uint32_t) * m_table_num);
+
+        cudaMemcpy(d_fun_right_shift, m_functions.m_right_shift, sizeof(uint32_t) * m_table_num, cudaMemcpyHostToDevice);
+        cudaMemcpy(d_fun_XOR_val, m_functions.m_XOR_val, sizeof(uint32_t) * m_table_num, cudaMemcpyHostToDevice);
+
+
     }
 
     ~Cuckoo_hash()
     {
-        free(functions);
-        for(auto i = 0; i < table_num; i ++)
-        {
-            free(table[i]);
-        }
-        free(table);
+        cudaFree(d_table);
+    }
+
+    void test(int32_t *arr, uint32_t len)
+    {
+        int32_t *d_arr;
+        cudaMalloc((void**)&d_arr, sizeof(int32_t) * len);
+        cudaMemcpy(d_arr, arr, sizeof(int32_t) * len, cudaMemcpyHostToDevice);
+
+        get_hash<<<1, len>>>(d_arr, len, d_fun_XOR_val, d_fun_right_shift, m_table_num, m_capacity);   
     }
 };
+
 
 
 void Random_array(int32_t *dst, uint32_t size_bits)
@@ -103,14 +119,10 @@ void Random_array(int32_t *dst, uint32_t size_bits)
 int main(int argc, char const *argv[])
 {
     Cuckoo_hash hash(25, 2);
-    Hash_function test(25);
-    uint32_t random_size_bits = 3;
-    int32_t *random_arr = (int32_t *)malloc(sizeof(int32_t) * (1 << random_size_bits));
-    Random_array(random_arr, random_size_bits);
-    for(auto i = 0UL; i < (1 << 3) ; i ++)
-    {
-        std::cout << "hash res :" << test(random_arr[i]) << std::endl;
-    }
-    std::cout << sizeof(Hash_function) << std::endl;
+    auto len_bit = 2;
+    auto len = 1 << len_bit;
+    int32_t *arr = (int32_t *)malloc(sizeof(int32_t) * len);
+    Random_array(arr, len_bit);
+    hash.test(arr, len);
     return 0;
 }
