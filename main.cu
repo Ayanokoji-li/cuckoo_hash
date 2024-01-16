@@ -9,6 +9,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define NO_KEY -1
+#define BLOCK_SIZE 512
+
 class Cuckoo_hash;
 
 class Hash_function
@@ -44,46 +47,88 @@ __forceinline__ __device__ uint32_t get_hash_res(int32_t input, uint32_t XOR_val
     return (((input * input) ^ XOR_val) >> right_shift) % capacity;
 }
 
-__global__ void get_hash(int32_t *arr, uint32_t len, uint32_t* XOR_val, uint32_t* right_shift, uint32_t table_num, uint32_t capacity)
+__global__ void insert_arr(int32_t *arr, uint32_t len, uint32_t* XOR_val, uint32_t* right_shift, uint32_t table_num, uint32_t capacity, int32_t *table, uint32_t evict_bound, bool *need_rehash)
 {
     auto i = blockDim.x * blockIdx.x + threadIdx.x;
     if(i < len)
     {
-        for(auto j = 0; j < table_num; j++)
+        uint32_t evict_times = 0;
+        uint32_t func_id = 0;
+        do
         {
-            printf("arr[%d] hashed by func %d get %u\n", i, j, get_hash_res(arr[i], XOR_val[j], right_shift[j], capacity));
-        }
-        __syncthreads();
+            uint32_t pos = get_hash_res(arr[i], XOR_val[func_id], right_shift[func_id], capacity);
+            int32_t old_key = atomicExch(&table[pos + capacity * func_id], arr[i]);
+            if(old_key == NO_KEY)
+            {
+                return;
+            }
+            else
+            {
+                arr[i] = old_key;
+                func_id = (func_id + 1) % table_num;
+                evict_times ++;
+            }
+        } while (evict_times < evict_bound);   
+
+        *need_rehash = true;
     }
 }
 
-__global__ 
+__global__ void d_search_arr(int32_t *arr, uint32_t len, uint32_t* XOR_val, uint32_t* right_shift, uint32_t table_num, uint32_t capacity, int32_t *table, bool *res_arr, bool *not_found)
+{
+    auto i = blockDim.x * blockIdx.x + threadIdx.x;
+    if(i < len)
+    {
+        uint32_t key_found[table_num] = {0};
+        for(auto j = 0UL; j < table_num; j ++)
+        {
+            uint32_t pos = get_hash_res(arr[i], XOR_val[j], right_shift[j], capacity);
+            if(table[pos + capacity * j] == arr[i])
+            {
+                key_found[j] = 1;
+            }
+        }
+    }
+}
 
 class Cuckoo_hash
 {
 private:
-    uint32_t m_capacity_bits;
     uint32_t m_capacity;
+    uint32_t m_capacity_bits;
     uint32_t m_table_num;
-    uint32_t *d_table;
+    int32_t *d_table;
     Hash_function m_functions;
     uint32_t *d_fun_XOR_val;
     uint32_t *d_fun_right_shift;
 
+    const uint32_t rehash_bound = 100;
+
+    void rehash()
+    {
+        m_functions = Hash_function(m_capacity_bits, m_table_num);
+        cudaMemcpy(d_fun_right_shift, m_functions.m_right_shift, sizeof(uint32_t) * m_table_num, cudaMemcpyHostToDevice);
+        cudaMemcpy(d_fun_XOR_val, m_functions.m_XOR_val, sizeof(uint32_t) * m_table_num, cudaMemcpyHostToDevice);
+
+        cudaMemset(d_table, NO_KEY, sizeof(int32_t) * m_table_num * m_capacity);
+    }
+
+
 
 public:
-    Cuckoo_hash(uint32_t table_size_bit, uint32_t function_num): m_capacity_bits(table_size_bit), m_capacity(1 << table_size_bit), m_table_num(function_num), m_functions(m_capacity_bits, function_num)
+    Cuckoo_hash(uint32_t table_size, uint32_t function_num): m_capacity_bits(std::floor(std::log2(table_size))), m_capacity(table_size), m_table_num(function_num), m_functions(m_capacity_bits, function_num)
     {
 
-        cudaMalloc((void **)&d_table, sizeof(uint32_t) * m_table_num * m_capacity);
+        cudaMalloc((void **)&d_table, sizeof(int32_t) * m_table_num * m_capacity);
         cudaMemset(d_table, 0, sizeof(uint32_t) * m_capacity * m_table_num);
         
         cudaMalloc((void **)&d_fun_right_shift, sizeof(uint32_t) * m_table_num);
         cudaMalloc((void **)&d_fun_XOR_val, sizeof(uint32_t) * m_table_num);
 
+        cudaMemset(d_table, NO_KEY, sizeof(int32_t) * m_table_num);
+
         cudaMemcpy(d_fun_right_shift, m_functions.m_right_shift, sizeof(uint32_t) * m_table_num, cudaMemcpyHostToDevice);
         cudaMemcpy(d_fun_XOR_val, m_functions.m_XOR_val, sizeof(uint32_t) * m_table_num, cudaMemcpyHostToDevice);
-
 
     }
 
@@ -92,14 +137,38 @@ public:
         cudaFree(d_table);
     }
 
-    void test(int32_t *arr, uint32_t len)
+    bool insert(int32_t *arr, uint32_t len)
     {
         int32_t *d_arr;
         cudaMalloc((void**)&d_arr, sizeof(int32_t) * len);
         cudaMemcpy(d_arr, arr, sizeof(int32_t) * len, cudaMemcpyHostToDevice);
 
-        get_hash<<<1, len>>>(d_arr, len, d_fun_XOR_val, d_fun_right_shift, m_table_num, m_capacity);   
+        bool need_rehash = false;
+        bool *d_need_rehash;
+        cudaMalloc((void**)&d_need_rehash, sizeof(bool));
+
+        uint32_t evict_bound = 4 * std::floor(std::log2(len));
+        uint32_t rehash_times = 0;
+
+        dim3 block(BLOCK_SIZE);
+        dim3 grid((len + block.x - 1) / block.x);
+        cudaMemset(d_need_rehash, false, sizeof(bool));
+        insert_arr<<<grid, block>>>(d_arr, len, d_fun_XOR_val, d_fun_right_shift, m_table_num, m_capacity, d_table, evict_bound, d_need_rehash);
+        cudaMemcpy(&need_rehash, d_need_rehash, sizeof(bool), cudaMemcpyDeviceToHost);
+
+        while (need_rehash && rehash_times < rehash_bound)
+        {
+            rehash_times ++;
+            rehash();
+            cudaMemset(d_need_rehash, false, sizeof(bool));
+            insert_arr<<<grid, block>>>(d_arr, len, d_fun_XOR_val, d_fun_right_shift, m_table_num, m_capacity, d_table, evict_bound, d_need_rehash);
+            cudaMemcpy(&need_rehash, d_need_rehash, sizeof(bool), cudaMemcpyDeviceToHost);
+        }
+        
+        return need_rehash;
     }
+
+    bool 
 };
 
 
@@ -118,11 +187,12 @@ void Random_array(int32_t *dst, uint32_t size_bits)
 
 int main(int argc, char const *argv[])
 {
-    Cuckoo_hash hash(25, 2);
+    Cuckoo_hash hash(25, 1 << 2);
     auto len_bit = 2;
     auto len = 1 << len_bit;
     int32_t *arr = (int32_t *)malloc(sizeof(int32_t) * len);
     Random_array(arr, len_bit);
-    hash.test(arr, len);
+    auto test = hash.insert(arr, len);
+    std::cout << "insert " << len << " elements, need rehash: " << test << "\n";
     return 0;
 }
