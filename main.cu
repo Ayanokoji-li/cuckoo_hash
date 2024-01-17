@@ -8,9 +8,12 @@
 #include <cctype>
 #include <stdlib.h>
 #include <string.h>
+#include <chrono>
 
 #define NO_KEY -1
 #define BLOCK_SIZE 512
+#define REPEAT_TIME 5
+#define GET_PERFOEMANCE(data_size, seconds) (data_size / seconds / 1e6)
 
 class Cuckoo_hash;
 
@@ -39,6 +42,26 @@ public:
         }
     }
 
+    void rehash()
+    {
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_int_distribution<uint32_t> dis(0, (uint32_t)(-1));
+        std::uniform_int_distribution<uint32_t> dis2(0, 32 - m_capacity_bits);
+
+        for(auto i = 0UL; i < m_function_num; i ++)
+        {
+            m_XOR_val[i] = dis(gen);
+            m_right_shift[i] = dis2(gen);
+        }
+    }
+
+    ~Hash_function()
+    {
+        free(m_XOR_val);
+        free(m_right_shift);
+    }
+
 friend class Cuckoo_hash;
 };
 
@@ -47,7 +70,7 @@ __forceinline__ __device__ uint32_t get_hash_res(int32_t input, uint32_t XOR_val
     return (((input * input) ^ XOR_val) >> right_shift) % capacity;
 }
 
-__global__ void insert_arr(int32_t *arr, uint32_t len, uint32_t* XOR_val, uint32_t* right_shift, uint32_t table_num, uint32_t capacity, int32_t *table, uint32_t evict_bound, bool *need_rehash)
+__global__ void d_insert_arr(int32_t *arr, uint32_t len, uint32_t* XOR_val, uint32_t* right_shift, uint32_t table_num, uint32_t capacity, int32_t *table, uint32_t evict_bound, bool *need_rehash)
 {
     auto i = blockDim.x * blockIdx.x + threadIdx.x;
     if(i < len)
@@ -74,12 +97,31 @@ __global__ void insert_arr(int32_t *arr, uint32_t len, uint32_t* XOR_val, uint32
     }
 }
 
-__global__ void d_search_arr(int32_t *arr, uint32_t len, uint32_t* XOR_val, uint32_t* right_shift, uint32_t table_num, uint32_t capacity, int32_t *table, bool *res_arr, bool *not_found)
+__global__ void d_insert_modify(int32_t *arr, int32_t *buffer, uint32_t len, uint32_t *buffer_len, uint32_t* XOR_val, uint32_t* right_shift, uint32_t table_num, uint32_t capacity, int32_t *table)
 {
     auto i = blockDim.x * blockIdx.x + threadIdx.x;
     if(i < len)
     {
-        uint32_t key_found[table_num] = {0};
+        int32_t old_key = arr[i];
+        for(auto j = 0; j < table_num; j ++)
+        {
+            uint32_t pos = get_hash_res(old_key, XOR_val[j], right_shift[j], capacity);
+            old_key = atomicExch(&table[pos + capacity * j], old_key);
+            if(old_key == NO_KEY)
+            {
+                return;
+            }
+        }
+        auto insert_pos = atomicInc(buffer_len, 1);
+        buffer[insert_pos] = old_key;
+    }
+}
+
+__global__ void d_search_arr(int32_t *arr, uint32_t len, uint32_t* XOR_val, uint32_t* right_shift, uint32_t table_num, uint32_t capacity, int32_t *table, bool *key_found)
+{
+    auto i = blockDim.x * blockIdx.x + threadIdx.x;
+    if(i < len)
+    {
         for(auto j = 0UL; j < table_num; j ++)
         {
             uint32_t pos = get_hash_res(arr[i], XOR_val[j], right_shift[j], capacity);
@@ -106,7 +148,7 @@ private:
 
     void rehash()
     {
-        m_functions = Hash_function(m_capacity_bits, m_table_num);
+        m_functions.rehash();
         cudaMemcpy(d_fun_right_shift, m_functions.m_right_shift, sizeof(uint32_t) * m_table_num, cudaMemcpyHostToDevice);
         cudaMemcpy(d_fun_XOR_val, m_functions.m_XOR_val, sizeof(uint32_t) * m_table_num, cudaMemcpyHostToDevice);
 
@@ -135,9 +177,11 @@ public:
     ~Cuckoo_hash()
     {
         cudaFree(d_table);
+        cudaFree(d_fun_right_shift);
+        cudaFree(d_fun_XOR_val);
     }
 
-    bool insert(int32_t *arr, uint32_t len)
+    bool insert(int32_t *arr, uint32_t len, uint32_t evict_bound = 0)
     {
         int32_t *d_arr;
         cudaMalloc((void**)&d_arr, sizeof(int32_t) * len);
@@ -147,13 +191,16 @@ public:
         bool *d_need_rehash;
         cudaMalloc((void**)&d_need_rehash, sizeof(bool));
 
-        uint32_t evict_bound = 4 * std::floor(std::log2(len));
+        if(evict_bound == 0)
+        {
+            evict_bound = 4 * std::floor(std::log2(len));
+        }
         uint32_t rehash_times = 0;
 
         dim3 block(BLOCK_SIZE);
         dim3 grid((len + block.x - 1) / block.x);
         cudaMemset(d_need_rehash, false, sizeof(bool));
-        insert_arr<<<grid, block>>>(d_arr, len, d_fun_XOR_val, d_fun_right_shift, m_table_num, m_capacity, d_table, evict_bound, d_need_rehash);
+        d_insert_arr<<<grid, block>>>(d_arr, len, d_fun_XOR_val, d_fun_right_shift, m_table_num, m_capacity, d_table, evict_bound, d_need_rehash);
         cudaMemcpy(&need_rehash, d_need_rehash, sizeof(bool), cudaMemcpyDeviceToHost);
 
         while (need_rehash && rehash_times < rehash_bound)
@@ -161,21 +208,45 @@ public:
             rehash_times ++;
             rehash();
             cudaMemset(d_need_rehash, false, sizeof(bool));
-            insert_arr<<<grid, block>>>(d_arr, len, d_fun_XOR_val, d_fun_right_shift, m_table_num, m_capacity, d_table, evict_bound, d_need_rehash);
+            d_insert_arr<<<grid, block>>>(d_arr, len, d_fun_XOR_val, d_fun_right_shift, m_table_num, m_capacity, d_table, evict_bound, d_need_rehash);
             cudaMemcpy(&need_rehash, d_need_rehash, sizeof(bool), cudaMemcpyDeviceToHost);
         }
         
+        cudaFree(d_arr);
+        cudaFree(d_need_rehash);
+
         return need_rehash;
     }
 
-    bool 
+    void search(int32_t *arr, uint32_t len)
+    {
+        int32_t *d_arr;
+        cudaMalloc((void **)&d_arr, sizeof(int32_t) * len);
+        cudaMemcpy(d_arr, arr, sizeof(int32_t) * len, cudaMemcpyHostToDevice);
+
+        bool *key_found = (bool *)malloc(sizeof(bool) * len);
+        bool *d_key_found;
+        cudaMalloc((void **)&d_key_found, sizeof(bool) * len);
+        cudaMemset(d_key_found, 0, sizeof(bool) * len);
+
+        dim3 block(BLOCK_SIZE);
+        dim3 grid((len + block.x - 1) / block.x);
+
+        d_search_arr<<<grid, block>>>(d_arr, len, d_fun_XOR_val, d_fun_right_shift, m_table_num, m_capacity, d_table, d_key_found);
+
+        cudaMemcpy(key_found, d_key_found, sizeof(bool) * len, cudaMemcpyDeviceToHost);
+        cudaFree(d_key_found);
+        cudaFree(d_arr);
+        free(key_found);
+
+    }
 };
 
 
 
-void Random_array(int32_t *dst, uint32_t size_bits)
+void Random_array(int32_t *dst, uint32_t size)
 {
-    uint32_t len = 1 << size_bits;
+    uint32_t len = size;
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_int_distribution<int32_t> dis(std::numeric_limits<int32_t>::min(), std::numeric_limits<int32_t>::max());
@@ -185,14 +256,211 @@ void Random_array(int32_t *dst, uint32_t size_bits)
     }
 }
 
+void get_Random_arr_from_arr(int32_t *src, int32_t *dst, uint32_t src_len, uint32_t dst_len)
+{
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<int32_t> dis(0, src_len);
+
+    for(auto i = 0; i < dst_len; i ++)
+    {
+        dst[i] = src[dis(gen)];
+    }
+}
+
+void test1()
+{
+    uint32_t table_size_bit = 25;
+    uint32_t table_size = 1 << table_size_bit;
+    uint32_t data_start = 10;
+    uint32_t data_end = 25;
+    uint32_t function_num = 2;
+    for(auto data_size_bit = 10 ; data_size_bit < data_end; data_size_bit ++)
+    {
+        for(auto i = 0; i < REPEAT_TIME; i ++)
+        {
+            uint32_t data_size = 1 << data_size_bit;
+            Cuckoo_hash hash(table_size, function_num);
+
+            int32_t *data = (int32_t *)malloc(sizeof(int32_t) * data_size);
+            Random_array(data, data_size);
+
+            std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+            auto success = hash.insert(data, data_size);
+            std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+
+            auto duration = std::chrono::duration_cast<std::chrono::duration<double>>(end - start);
+            double duration_time = duration.count();
+
+            std::cout << "time for size_bit " << data_size_bit << " repeat time " << i << " speed: " << GET_PERFOEMANCE(data_size, duration_time) << " MOPT/s";
+            if(success == true)
+            {
+                std::cout << " success" << std::endl;
+            }
+            else
+            {
+                std::cout << " not success" << std::endl;
+            }
+
+            free(data);
+        }
+        std::cout << "test for data size_bit " << data_size_bit << " end" << std::endl;
+        std::cout << std::endl;
+    }
+}
+
+void test2()
+{
+    uint32_t table_size_bit = 25;
+    uint32_t table_size = 1 << table_size_bit;
+    uint32_t function_num = 2;
+    uint32_t data_size_bit = 24;
+    uint32_t data_size = 1 << data_size_bit;
+    uint32_t test_begin = 0;
+    uint32_t test_end = 11;
+    
+
+    for(auto i = 0; i < REPEAT_TIME; i ++)
+    {
+        Cuckoo_hash hash(table_size, function_num);
+
+        int32_t *data = (int32_t *)malloc(sizeof(int32_t) * data_size);
+        Random_array(data, data_size);
+
+        std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+        auto success = hash.insert(data, data_size);
+        std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+
+        auto duration = std::chrono::duration_cast<std::chrono::duration<double>>(end - start);
+        double duration_time = duration.count();
+        std::cout << "repeat time " << i << " insert speed: " << GET_PERFOEMANCE(data_size, duration_time) << "MOPT/s" << std::endl;
+
+        for(auto j = test_begin; j < test_end; j ++)
+        {        
+            int percent = 100 - 10 * j;
+            uint32_t ori_data_size = data_size * percent / 100;
+            uint32_t random_data_size = data_size - ori_data_size;
+            int32_t *search_arr = (int32_t *)malloc(sizeof(int32_t) * data_size);
+
+            Random_array(search_arr, random_data_size);
+            get_Random_arr_from_arr(data, search_arr+random_data_size, data_size, ori_data_size);
+
+            start = std::chrono::steady_clock::now();
+            hash.search(search_arr, data_size); 
+            end = std::chrono::steady_clock::now();
+            duration = std::chrono::duration_cast<std::chrono::duration<double>>(end - start);
+            duration_time = duration.count();
+            std::cout << "data repeat " << percent << "% for search speed: " << GET_PERFOEMANCE(data_size, duration_time) << "MOPT/s" << std::endl;
+
+            free(search_arr);
+        }
+
+        free(data);
+    }
+}
+
+void test3()
+{
+    std::cout << "----------------------" << std::endl;
+    std::cout << "test 3 start" << std::endl << std::endl;
+    uint32_t data_size_bit = 24;
+    uint32_t data_size = 1 << data_size_bit;
+
+    std::vector<uint32_t> hash_table_size;
+    for(auto i = 1; i <= 10; i ++)
+    {
+        hash_table_size.push_back(data_size * (10 + i) / 10);
+    }
+    
+    hash_table_size.push_back(data_size * (100 + 1) / 100);
+    hash_table_size.push_back(data_size * (100 + 2) / 100);
+    hash_table_size.push_back(data_size * (100 + 5) / 100);
+    uint32_t function_num = 2;
+
+    for(auto i = 0; i < REPEAT_TIME; i ++)
+    {
+        std::cout << "repeat time " << i << std::endl;
+        int32_t *data = (int32_t *)malloc(sizeof(int32_t) * data_size);
+        Random_array(data, data_size);
+
+        for(auto j = 0; j < hash_table_size.size(); j ++)
+        {
+            Cuckoo_hash hash(hash_table_size[j], function_num);
+
+            std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+            auto success = hash.insert(data, data_size);
+            std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+
+            auto duration = std::chrono::duration_cast<std::chrono::duration<double>>(end - start);
+            double duration_time = duration.count();
+
+            std::cout << "hash size " << hash_table_size[j] << " speed: " << GET_PERFOEMANCE(data_size, duration_time) << " MOPT/s";
+            if(success == true)
+            {
+                std::cout << " success" << std::endl;
+            }
+            else
+            {
+                std::cout << " not success ";
+                std::cout << " used time: " << duration_time << std::endl;
+            }
+
+        }
+        free(data);
+    }
+}
+
+void test4()
+{
+    std::cout << "----------------------" << std::endl;
+    std::cout << "test 4 start" << std::endl << std::endl;
+    uint32_t data_size_bit = 20;
+    uint32_t data_size = 1 << data_size_bit;
+
+    uint32_t function_num = 2;
+    uint32_t table_size = data_size * 14 / 10;
+
+    std::vector<uint32_t> evict_bounds;
+    for(auto i = 1; i <= 10; i ++)
+    {
+        evict_bounds.push_back(i * data_size_bit);
+    }
+
+    for(auto i = 0; i < REPEAT_TIME; i ++)
+    {
+        Cuckoo_hash(table_size, function_num);
+        std::cout << "repeat time " << i << std::endl;
+        int32_t *data = (int32_t *)malloc(sizeof(int32_t) * data_size);
+        Random_array(data, data_size);
+
+        for(auto j = 0; j < evict_bounds.size(); j ++)
+        {
+            Cuckoo_hash hash(table_size, function_num);
+
+            std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+            auto success = hash.insert(data, data_size, evict_bounds[j]);
+            std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+
+            auto duration = std::chrono::duration_cast<std::chrono::duration<double>>(end - start);
+            double duration_time = duration.count();
+
+            std::cout << "evict bound " << evict_bounds[j] << " speed: " << GET_PERFOEMANCE(data_size, duration_time) << " MOPT/s";
+            if(success == true)
+            {
+                std::cout << " success" << std::endl;
+            }
+            else
+            {
+                std::cout << " not success ";
+                std::cout << " used time: " << duration_time << std::endl;
+            }
+
+        }
+    }   
+}
+
 int main(int argc, char const *argv[])
 {
-    Cuckoo_hash hash(25, 1 << 2);
-    auto len_bit = 2;
-    auto len = 1 << len_bit;
-    int32_t *arr = (int32_t *)malloc(sizeof(int32_t) * len);
-    Random_array(arr, len_bit);
-    auto test = hash.insert(arr, len);
-    std::cout << "insert " << len << " elements, need rehash: " << test << "\n";
+    test4();
     return 0;
 }
