@@ -152,8 +152,8 @@ __global__ void d_search_arr(int32_t *arr, uint32_t len, uint32_t* XOR_val, uint
 class Cuckoo_hash
 {
 private:
-    uint32_t m_capacity;
     uint32_t m_table_num;
+    uint32_t m_capacity;
     uint32_t m_capacity_bits;
     int32_t *d_table;
     Hash_function m_functions;
@@ -174,7 +174,7 @@ private:
 
 
 public:
-    Cuckoo_hash(uint32_t table_size, uint32_t function_num): m_capacity_bits(std::floor(std::log2(table_size))/m_table_num), m_capacity(table_size/m_table_num), m_table_num(function_num * 2), m_functions(m_capacity_bits, function_num)
+    Cuckoo_hash(uint32_t table_size, uint32_t function_num): m_capacity_bits((uint32_t)std::floor(std::log2(table_size/m_table_num))), m_capacity(table_size/m_table_num), m_table_num(function_num * 2), m_functions(m_capacity_bits, function_num)
     {
 
         cudaMalloc((void **)&d_table, sizeof(int32_t) * m_table_num * m_capacity);

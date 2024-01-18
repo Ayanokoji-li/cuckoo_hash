@@ -374,7 +374,7 @@ void test1()
 
             std::cout << "time for size_bit " << data_size_bit << " repeat time " << i << "elapse time: " << duration_time <<" speed: " << GET_PERFOEMANCE(data_size * rehash_times, duration_time) << " MOPT/s";
             std::cout << "rehash times : " << rehash_times;
-            if(rehash_times != REHASH_BOUND + 1)
+            if(rehash_times != REHASH_BOUND)
             {
                 std::cout << " success" << std::endl;
             }
@@ -392,16 +392,16 @@ void test1()
 
 void test2()
 {
-    uint32_t table_size_bit = 25;
+    uint32_t table_size_bit = 6;
     uint32_t table_size = 1 << table_size_bit;
     uint32_t function_num = 2;
-    uint32_t data_size_bit = 21;
+    uint32_t data_size_bit = 5;
     uint32_t data_size = 1 << data_size_bit;
     uint32_t test_begin = 0;
-    uint32_t test_end = 11;
+    uint32_t test_end = 1;
     
 
-    for(auto i = 0; i < REPEAT_TIME; i ++)
+    for(auto i = 0; i < 1; i ++)
     {
         Cuckoo_hash hash(table_size, function_num);
 
@@ -409,19 +409,20 @@ void test2()
         Random_array(data, data_size);
 
         std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
-        auto success = hash.insert(data, data_size);
+        auto rehash_times = hash.insert(data, data_size);
         std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::duration<double>>(end - start);
         double duration_time = duration.count();
         std::cout << "repeat time " << i << " insert speed: " << GET_PERFOEMANCE(data_size, duration_time) << "MOPT/s" << std::endl;
-        // if(success == true)
-        // {
-        //     std::cout << " success" << std::endl;
-        // }
-        // else
-        // {
-        //     std::cout << " not success" << std::endl;
-        // }
+        std::cout << "rehash times : " << rehash_times << std::endl;
+        if(rehash_times != REHASH_BOUND)
+        {
+            std::cout << " success" << std::endl;
+        }
+        else
+        {
+            std::cout << " not success" << std::endl;
+        }
 
         for(auto j = test_begin; j < 1; j ++)
         {        
@@ -440,7 +441,7 @@ void test2()
             duration = std::chrono::duration_cast<std::chrono::duration<double>>(end - start);
             duration_time = duration.count();
             std::cout << "data repeat " << percent << "% for search speed: " << GET_PERFOEMANCE(data_size, duration_time) << "MOPT/s" << std::endl;
-
+            hash.print_table();
             bool found = true;
             uint32_t not_found_num = 0;
             for(auto t = 0UL; t < data_size; t ++)
@@ -453,16 +454,15 @@ void test2()
                 }
             }
             std::cout << "found " << found << " not found num " << not_found_num << std::endl;
-            // if(found == false)
-            // {
-            //     hash.print_table();
-            //     std::cout << "search values" << std::endl;
-            //     for(auto index = 0; index < data_size; index ++)
-            //     {
-            //         std::cout << "value " << index << " = " << search_arr[index] << std::endl;
-            //     }
+            if(found == false)
+            {
+                std::cout << "search values" << std::endl;
+                // for(auto index = 0; index < data_size; index ++)
+                // {
+                //     std::cout << "value " << index << " = " << search_arr[index] << std::endl;
+                // }
                 
-            // }
+            }
             free(key_found);
             free(search_arr);
         }
@@ -574,6 +574,6 @@ void test4()
 int main(int argc, char const *argv[])
 {
 
-    test1();
+    test2();
     return 0;
 }

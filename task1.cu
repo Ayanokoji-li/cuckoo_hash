@@ -46,7 +46,7 @@ int main(int argc, char const *argv[])
 {
     std::string args[] = {"--insert", "--repeat"};
     uint32_t repeat_time = REPEAT_TIME;
-    uint32_t data_size_bits = 10;
+    uint32_t data_size_bits = 24;
 
     for(auto i = 1; i < argc; i ++)
     {
