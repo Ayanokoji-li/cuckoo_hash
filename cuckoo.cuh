@@ -80,26 +80,31 @@ __forceinline__ __device__ uint32_t get_hash_res(int32_t input, uint32_t XOR_val
 __global__ void d_insert_arr(const int32_t *arr, const uint32_t len, const uint32_t* XOR_val, const uint32_t* right_shift, const uint32_t table_num, const uint32_t function_num,const uint32_t capacity, int32_t *table,const uint32_t evict_bound, bool *need_rehash)
 {
     auto i = blockDim.x * blockIdx.x + threadIdx.x;
-    uint32_t XOR_val_local[MAX_FUNCTION];
-    uint32_t right_shift_local[MAX_FUNCTION];
-    for(auto j = 0; j < function_num; j ++)
-    {
-        XOR_val_local[j] = XOR_val[j];
-        right_shift_local[j] = right_shift[j];
-    }
+    __shared__ bool need_rehash_share;
+    if(threadIdx.x == 0)
+        need_rehash_share = false;
+    
+    // uint32_t XOR_val_local[MAX_FUNCTION];
+    // uint32_t right_shift_loacl[MAX_FUNCTION];
+    // for(auto j = 0; j < function_num; j ++)
+    // {
+    //     XOR_val_local[j] = XOR_val[j];
+    //     right_shift_loacl[j] = right_shift_loacl[j]
+    // }
+
     if(i < len)
     {
         uint32_t evict_times = 0;
         uint32_t func_id = 0;
         uint32_t table_id = 0;
         int32_t key = arr[i];
-        bool need_evict = true;
-        while(need_evict == true && evict_times < evict_bound * table_num && *need_rehash == false)
+        while(need_rehash_share == false && evict_times < evict_bound * table_num)
         {
-            uint32_t pos = get_hash_res(key, XOR_val_local[func_id], right_shift_local[func_id], capacity);
+            uint32_t pos = get_hash_res(key, XOR_val[func_id], right_shift[func_id], capacity);
             key = atomicExch(&table[pos + capacity * table_id], key);
             if(key == NO_KEY)
             {
+                need_rehash_share = *need_rehash;
                 break;
             }
             else
@@ -113,14 +118,15 @@ __global__ void d_insert_arr(const int32_t *arr, const uint32_t len, const uint3
         if(evict_times == evict_bound * table_num)
         {
             *need_rehash = true;
+            need_rehash_share = true;
         }
+
     }
 }
 
 __global__ void d_insert_modify(int32_t *arr, int32_t *buffer, uint32_t len, uint32_t *buffer_len, uint32_t* XOR_val, uint32_t* right_shift, uint32_t table_num, uint32_t capacity, int32_t *table)
 {
     auto i = blockDim.x * blockIdx.x + threadIdx.x;
-    __shared__ int32_t old_key_buffer[BLOCK_SIZE];
     if(i < len)
     {
         int32_t old_key = arr[i];
@@ -141,6 +147,7 @@ __global__ void d_insert_modify(int32_t *arr, int32_t *buffer, uint32_t len, uin
 __global__ void d_search_arr(int32_t *arr, uint32_t len, uint32_t* XOR_val, uint32_t* right_shift, uint32_t table_num, uint32_t function_num,uint32_t capacity, int32_t *table, bool *key_found)
 {
     auto i = blockDim.x * blockIdx.x + threadIdx.x;
+
     if(i < len)
     {
         auto to_find = arr[i];
@@ -151,10 +158,29 @@ __global__ void d_search_arr(int32_t *arr, uint32_t len, uint32_t* XOR_val, uint
             if(table[pos + capacity * j] == to_find)
             {
                 key_found[i] = true;
+                return;
             }
             else
             {
                 func_id = (func_id + 1) % function_num;
+            }
+        }
+    }
+}
+
+__global__ void search_separate(int32_t *arr, uint32_t len, uint32_t* XOR_val, uint32_t* right_shift, uint32_t function_num, uint32_t function_id,uint32_t capacity, int32_t *table, bool *key_found)
+{
+    auto i = blockDim.x * blockIdx.x + threadIdx.x;
+    if(i < len)
+    {
+        auto to_find = arr[i];
+        for(auto j = function_id; j < function_num * 2; j += function_num)
+        {
+            auto pos = get_hash_res(to_find, XOR_val[function_id], right_shift[function_id], capacity);
+            if(table[pos + capacity * j] == to_find)
+            {
+                key_found[i] = true;
+                return;
             }
         }
     }
@@ -207,7 +233,6 @@ public:
         cudaFree(d_fun_XOR_val);
     }
 
-#ifndef MODIFY
     uint32_t insert(int32_t *arr, uint32_t len, uint32_t evict_bound = 0)
     {
         int32_t *d_arr;
@@ -248,55 +273,56 @@ public:
         return rehash_times;
     }
 
-#else
+    //abort
+    // uint32_t insert(int32_t *arr, uint32_t len, uint32_t evict_bound = 0)
+    // {
+    //     int32_t *d_arr;
+    //     cudaMalloc((void**)&d_arr, sizeof(int32_t) * len);
+    //     cudaMemcpy(d_arr, arr, sizeof(int32_t) * len, cudaMemcpyHostToDevice);
 
-    uint32_t insert(int32_t *arr, uint32_t len, uint32_t evict_bound = 0)
-    {
-        int32_t *d_arr;
-        cudaMalloc((void**)&d_arr, sizeof(int32_t) * len);
-        cudaMemcpy(d_arr, arr, sizeof(int32_t) * len, cudaMemcpyHostToDevice);
+    //     uint32_t buffer_len = len;
+    //     uint32_t *d_buffer_len;
+    //     cudaMalloc((void**)&d_buffer_len, sizeof(uint32_t));
+    //     int32_t *d_buffer;
+    //     cudaMalloc((void **)&d_buffer, sizeof(int32_t) * len);
 
-        uint32_t buffer_len = len;
-        uint32_t *d_buffer_len;
-        cudaMalloc((void**)&d_buffer_len, sizeof(uint32_t));
-        int32_t *d_buffer;
-        cudaMalloc((void **)&d_buffer, sizeof(int32_t) * len);
+    //     if(evict_bound == 0)
+    //     {
+    //         evict_bound = 4 * std::floor(std::log2(len));
+    //     }
+    //     uint32_t evict_times = 0;
+    //     uint32_t rehash_times = 0;
 
-        if(evict_bound == 0)
-        {
-            evict_bound = 4 * std::floor(std::log2(len));
-        }
-        uint32_t evict_times = 0;
-        uint32_t rehash_times = 0;
+    //     while(rehash_times < rehash_bound)
+    //     {
+    //         do
+    //         {
+    //             cudaMemset(d_buffer_len, 0, sizeof(uint32_t));
+    //             dim3 block(BLOCK_SIZE);
+    //             dim3 grid((buffer_len + block.x - 1) / block.x);
+    //             d_insert_modify<<<grid, block>>>(d_arr, d_buffer, buffer_len, d_buffer_len, d_fun_XOR_val, d_fun_right_shift, m_table_num, m_capacity, d_table);
+    //             cudaMemcpy(d_buffer_len, &buffer_len, sizeof(uint32_t), cudaMemcpyDeviceToHost);
+    //             std::swap(d_arr, d_buffer);
+    //             evict_times ++;
+    //         } while (buffer_len != 0 && evict_times < evict_bound);
 
-        while(rehash_times < rehash_bound)
-        {
-            do
-            {
-                cudaMemset(d_buffer_len, 0, sizeof(uint32_t));
-                dim3 block(BLOCK_SIZE);
-                dim3 grid((buffer_len + block.x - 1) / block.x);
-                d_insert_modify<<<grid, block>>>(d_arr, d_buffer, buffer_len, d_buffer_len, d_fun_XOR_val, d_fun_right_shift, m_table_num, m_capacity, d_table);
-                cudaMemcpy(d_buffer_len, &buffer_len, sizeof(uint32_t), cudaMemcpyDeviceToHost);
-                std::swap(d_arr, d_buffer);
-                evict_times ++;
-            } while (buffer_len != 0 && evict_times < evict_bound);
+    //         if(evict_times == evict_bound)
+    //         {
+    //             rehash_times ++;
+    //             rehash();
+    //         }
+    //         else
+    //         {
+    //             break;
+    //         }
+    //     }
 
-            if(evict_times == evict_bound)
-            {
-                rehash_times ++;
-                rehash();
-            }
-            else
-            {
-                break;
-            }
-        }
+    //     return rehash_times;        
 
-        return rehash_times;        
+    // }
 
-    }
-#endif
+#ifndef MODIFY
+
     bool* search(int32_t *arr, uint32_t len)
     {
         int32_t *d_arr;
@@ -320,6 +346,37 @@ public:
         return key_found;
     }
 
+#else
+
+    bool* search(int32_t *arr, uint32_t len)
+    {
+        int32_t *d_arr;
+        cudaMalloc((void **)&d_arr, sizeof(int32_t) * len);
+        cudaMemcpy(d_arr, arr, sizeof(int32_t) * len, cudaMemcpyHostToDevice);
+
+        bool *key_found = (bool *)malloc(sizeof(bool) * len);
+        bool *d_key_found;
+        cudaMalloc((void **)&d_key_found, sizeof(bool) * len);
+        cudaMemset(d_key_found, 0, sizeof(bool) * len);
+
+        dim3 block(BLOCK_SIZE);
+        dim3 grid((len + block.x - 1) / block.x);
+
+        for(auto i = 0; i < m_functions.m_function_num; i ++)
+        {
+            search_separate<<<grid, block>>>(d_arr, len, d_fun_XOR_val, d_fun_right_shift, m_functions.m_function_num, i, m_capacity, d_table, d_key_found);
+        }
+
+        cudaDeviceSynchronize();
+        cudaMemcpy(key_found, d_key_found, sizeof(bool) * len, cudaMemcpyDeviceToHost);
+        cudaFree(d_key_found);
+        cudaFree(d_arr);
+
+        return key_found;
+    }
+
+#endif
+
     void print_table()
     {
         int32_t *table = (int32_t *)malloc(sizeof(int32_t) * m_table_num * m_capacity);
@@ -340,6 +397,21 @@ public:
     }
 };
 
+
+void array_from_file(const std::string &file_name, int32_t *dst, uint32_t &size)
+{
+    std::ifstream file(file_name);
+    std::string line;
+    std::vector<int32_t> arr;
+    size = 0;
+    while(std::getline(file, line))
+    {
+        arr.push_back(std::stoi(line));
+        size ++;
+    }
+    // dst = (int32_t *)malloc(sizeof(int32_t) * size);
+    memcpy(dst, arr.data(), sizeof(int32_t) * size);
+}
 
 
 void Random_array(int32_t *dst, uint32_t size)
@@ -363,6 +435,18 @@ void get_Random_arr_from_arr(int32_t *src, int32_t *dst, uint32_t src_len, uint3
     for(auto i = 0; i < dst_len; i ++)
     {
         dst[i] = src[dis(gen)];
+    }
+}
+
+void get_array(int32_t *arr, uint32_t &size, bool from_file = false,const std::string &file_name = "")
+{
+    if(from_file)
+    {
+        array_from_file(file_name, arr, size);
+    }
+    else
+    {
+        Random_array(arr, size);
     }
 }
 

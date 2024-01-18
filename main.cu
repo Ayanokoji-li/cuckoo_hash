@@ -392,10 +392,10 @@ void test1()
 
 void test2()
 {
-    uint32_t table_size_bit = 10;
+    uint32_t table_size_bit = 25;
     uint32_t table_size = 1 << table_size_bit;
     uint32_t function_num = 3;
-    uint32_t data_size_bit = 9;
+    uint32_t data_size_bit = 24;
     uint32_t data_size = 1 << data_size_bit;
     uint32_t test_begin = 0;
     uint32_t test_end = 1;
@@ -574,6 +574,6 @@ void test4()
 int main(int argc, char const *argv[])
 {
 
-    test2();
+    test1();
     return 0;
 }
