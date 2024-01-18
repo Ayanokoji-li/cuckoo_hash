@@ -12,10 +12,13 @@
 #include <chrono>
 
 #define NO_KEY -1
-#define BLOCK_SIZE 4
+#define BLOCK_SIZE 512
 #define REPEAT_TIME 5
 #define GET_PERFOEMANCE(data_size, seconds) (data_size / seconds / 1e6)
-#define REHASH_BOUND 200
+#define REHASH_BOUND 100
+#define MAX_FUNCTION 10
+
+#define PER_BLOCK 1
 
 // #define MODIFY
 
@@ -77,6 +80,13 @@ __forceinline__ __device__ uint32_t get_hash_res(int32_t input, uint32_t XOR_val
 __global__ void d_insert_arr(const int32_t *arr, const uint32_t len, const uint32_t* XOR_val, const uint32_t* right_shift, const uint32_t table_num, const uint32_t function_num,const uint32_t capacity, int32_t *table,const uint32_t evict_bound, bool *need_rehash)
 {
     auto i = blockDim.x * blockIdx.x + threadIdx.x;
+    uint32_t XOR_val_local[MAX_FUNCTION];
+    uint32_t right_shift_local[MAX_FUNCTION];
+    for(auto j = 0; j < function_num; j ++)
+    {
+        XOR_val_local[j] = XOR_val[j];
+        right_shift_local[j] = right_shift[j];
+    }
     if(i < len)
     {
         uint32_t evict_times = 0;
@@ -84,9 +94,9 @@ __global__ void d_insert_arr(const int32_t *arr, const uint32_t len, const uint3
         uint32_t table_id = 0;
         int32_t key = arr[i];
         bool need_evict = true;
-        while(need_evict == true && evict_times < evict_bound * table_num)
+        while(need_evict == true && evict_times < evict_bound * table_num && *need_rehash == false)
         {
-            uint32_t pos = get_hash_res(key, XOR_val[func_id], right_shift[func_id], capacity);
+            uint32_t pos = get_hash_res(key, XOR_val_local[func_id], right_shift_local[func_id], capacity);
             key = atomicExch(&table[pos + capacity * table_id], key);
             if(key == NO_KEY)
             {
@@ -110,6 +120,7 @@ __global__ void d_insert_arr(const int32_t *arr, const uint32_t len, const uint3
 __global__ void d_insert_modify(int32_t *arr, int32_t *buffer, uint32_t len, uint32_t *buffer_len, uint32_t* XOR_val, uint32_t* right_shift, uint32_t table_num, uint32_t capacity, int32_t *table)
 {
     auto i = blockDim.x * blockIdx.x + threadIdx.x;
+    __shared__ int32_t old_key_buffer[BLOCK_SIZE];
     if(i < len)
     {
         int32_t old_key = arr[i];
@@ -176,7 +187,6 @@ private:
 public:
     Cuckoo_hash(uint32_t table_size, uint32_t function_num): m_capacity_bits((uint32_t)std::floor(std::log2(table_size/m_table_num))), m_capacity(table_size/m_table_num), m_table_num(function_num * 2), m_functions(m_capacity_bits, function_num)
     {
-
         cudaMalloc((void **)&d_table, sizeof(int32_t) * m_table_num * m_capacity);
         cudaMemset(d_table, 0, sizeof(uint32_t) * m_capacity * m_table_num);
         
@@ -215,10 +225,10 @@ public:
         uint32_t rehash_times = 0;
 
         dim3 block(BLOCK_SIZE);
-        dim3 grid((len + block.x - 1) / block.x);
+        dim3 grid((len + block.x - 1) / block.x / PER_BLOCK);
         cudaMemset(d_need_rehash, false, sizeof(bool));
         d_insert_arr<<<grid, block>>>(d_arr, len, d_fun_XOR_val, d_fun_right_shift, m_table_num, m_functions.m_function_num,m_capacity, d_table, evict_bound, d_need_rehash);
-        cudaDeviceSynchronize();
+        // cudaDeviceSynchronize();
         cudaMemcpy(&need_rehash, d_need_rehash, sizeof(bool), cudaMemcpyDeviceToHost);
 
         while (need_rehash && rehash_times < rehash_bound)
@@ -227,7 +237,7 @@ public:
             rehash();
             cudaMemset(d_need_rehash, false, sizeof(bool));
             d_insert_arr<<<grid, block>>>(d_arr, len, d_fun_XOR_val, d_fun_right_shift, m_table_num, m_functions.m_function_num ,m_capacity, d_table, evict_bound, d_need_rehash);
-            cudaDeviceSynchronize();
+            // cudaDeviceSynchronize();
             cudaMemcpy(&need_rehash, d_need_rehash, sizeof(bool), cudaMemcpyDeviceToHost);
         }
         

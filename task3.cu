@@ -21,6 +21,7 @@ void test3(double ratio, uint32_t repeat_time)
 
     std::vector<uint32_t> hash_table_size;
     hash_table_size.push_back(std::floor(ratio * data_size));
+    std::cout << "hash size " << hash_table_size[0] << std::endl;
 
     for(auto i = 0; i < REPEAT_TIME; i ++)
     {
@@ -38,15 +39,15 @@ void test3(double ratio, uint32_t repeat_time)
             auto duration = std::chrono::duration_cast<std::chrono::duration<double>>(end - start);
             double duration_time = duration.count();
 
-            std::cout << "hash size " << hash_table_size[j] << " times "<< duration_time <<"s speed: " << GET_PERFOEMANCE(data_size * repeat_time, duration_time) << " MOPT/s";
             if(repeat_time != REHASH_BOUND + 1)
             {
-                std::cout << " success" << std::endl;
+                std::cout << " success" ;
             }
             else
             {
-                std::cout << " not success " << std::endl;
+                std::cout << " not success ";
             }
+            std::cout  << " times "<< duration_time <<"s speed: " << GET_PERFOEMANCE(data_size * repeat_time, duration_time) << " MOPT/s" << std::endl;
 
         }
         free(data);
@@ -57,12 +58,13 @@ int main(int argc, char const *argv[])
 {
     std::string args[] = {"--ratio", "--repeat"};
     uint32_t repeat_time = REPEAT_TIME;
-    double ratio = 1.01;
+    double ratio = 1.4;
     for(auto i = 1; i < argc; i ++)
     {
         if(strcmp(argv[i], args[0].c_str()) == 0)
         {
-            ratio = atoi(argv[i + 1]);
+            ratio = atof(argv[i + 1]);
+            std::cout << "args " << ratio << std::endl;
         }
         else if(strcmp(argv[i], args[1].c_str()) == 0)
         {

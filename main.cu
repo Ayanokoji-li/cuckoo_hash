@@ -392,10 +392,10 @@ void test1()
 
 void test2()
 {
-    uint32_t table_size_bit = 6;
+    uint32_t table_size_bit = 10;
     uint32_t table_size = 1 << table_size_bit;
-    uint32_t function_num = 2;
-    uint32_t data_size_bit = 5;
+    uint32_t function_num = 3;
+    uint32_t data_size_bit = 9;
     uint32_t data_size = 1 << data_size_bit;
     uint32_t test_begin = 0;
     uint32_t test_end = 1;
@@ -441,7 +441,7 @@ void test2()
             duration = std::chrono::duration_cast<std::chrono::duration<double>>(end - start);
             duration_time = duration.count();
             std::cout << "data repeat " << percent << "% for search speed: " << GET_PERFOEMANCE(data_size, duration_time) << "MOPT/s" << std::endl;
-            hash.print_table();
+            // hash.print_table();
             bool found = true;
             uint32_t not_found_num = 0;
             for(auto t = 0UL; t < data_size; t ++)
