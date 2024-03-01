@@ -80,17 +80,9 @@ __forceinline__ __device__ uint32_t get_hash_res(int32_t input, uint32_t XOR_val
 __global__ void d_insert_arr(const int32_t *arr, const uint32_t len, const uint32_t* XOR_val, const uint32_t* right_shift, const uint32_t table_num, const uint32_t function_num,const uint32_t capacity, int32_t *table,const uint32_t evict_bound, bool *need_rehash)
 {
     auto i = blockDim.x * blockIdx.x + threadIdx.x;
-    __shared__ bool need_rehash_share;
-    if(threadIdx.x == 0)
-        need_rehash_share = false;
-    
-    // uint32_t XOR_val_local[MAX_FUNCTION];
-    // uint32_t right_shift_loacl[MAX_FUNCTION];
-    // for(auto j = 0; j < function_num; j ++)
-    // {
-    //     XOR_val_local[j] = XOR_val[j];
-    //     right_shift_loacl[j] = right_shift_loacl[j]
-    // }
+    // __shared__ bool need_rehash_share;
+    // if(threadIdx.x == 0)
+    //     need_rehash_share = false;
 
     if(i < len)
     {
@@ -98,13 +90,13 @@ __global__ void d_insert_arr(const int32_t *arr, const uint32_t len, const uint3
         uint32_t func_id = 0;
         uint32_t table_id = 0;
         int32_t key = arr[i];
-        while(need_rehash_share == false && evict_times < evict_bound * table_num)
+        while(*need_rehash == false && evict_times < evict_bound * table_num)
         {
             uint32_t pos = get_hash_res(key, XOR_val[func_id], right_shift[func_id], capacity);
             key = atomicExch(&table[pos + capacity * table_id], key);
             if(key == NO_KEY)
             {
-                need_rehash_share = *need_rehash;
+                // need_rehash_share = *need_rehash;
                 break;
             }
             else
@@ -118,7 +110,7 @@ __global__ void d_insert_arr(const int32_t *arr, const uint32_t len, const uint3
         if(evict_times == evict_bound * table_num)
         {
             *need_rehash = true;
-            need_rehash_share = true;
+            // need_rehash_share = true;
         }
 
     }

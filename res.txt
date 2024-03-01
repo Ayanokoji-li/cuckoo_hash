@@ -1,0 +1,363 @@
+---------------------
+task 1 start
+data size bits 10
+elapse time: 2.6118e-05s speed: 39.2067 MOPT/s
+elapse time: 2.6267e-05s speed: 38.9843 MOPT/s
+elapse time: 2.4062e-05s speed: 42.5567 MOPT/s
+elapse time: 2.3867e-05s speed: 42.9044 MOPT/s
+elapse time: 2.2524e-05s speed: 45.4626 MOPT/s
+average time: 2.45676e-05s
+
+data size bits 11
+elapse time: 2.6063e-05s speed: 78.5788 MOPT/s
+elapse time: 2.6455e-05s speed: 77.4145 MOPT/s
+elapse time: 2.4889e-05s speed: 82.2853 MOPT/s
+elapse time: 2.2028e-05s speed: 92.9726 MOPT/s
+elapse time: 2.1205e-05s speed: 96.581 MOPT/s
+average time: 2.4128e-05s
+
+data size bits 12
+elapse time: 2.7721e-05s speed: 147.758 MOPT/s
+elapse time: 2.8899e-05s speed: 141.735 MOPT/s
+elapse time: 2.7339e-05s speed: 149.823 MOPT/s
+elapse time: 2.5812e-05s speed: 158.686 MOPT/s
+elapse time: 2.4126e-05s speed: 169.775 MOPT/s
+average time: 2.67794e-05s
+
+data size bits 13
+elapse time: 4.9945e-05s speed: 164.02 MOPT/s
+elapse time: 3.208e-05s speed: 255.362 MOPT/s
+elapse time: 2.8775e-05s speed: 284.692 MOPT/s
+elapse time: 3.3519e-05s speed: 244.399 MOPT/s
+elapse time: 3.3851e-05s speed: 242.002 MOPT/s
+average time: 3.5634e-05s
+
+data size bits 14
+elapse time: 6.0241e-05s speed: 271.974 MOPT/s
+elapse time: 5.7271e-05s speed: 286.078 MOPT/s
+elapse time: 5.2251e-05s speed: 313.563 MOPT/s
+elapse time: 5.5124e-05s speed: 297.221 MOPT/s
+elapse time: 5.1157e-05s speed: 320.269 MOPT/s
+average time: 5.52088e-05s
+
+data size bits 15
+elapse time: 0.000101456s speed: 322.977 MOPT/s
+elapse time: 0.000898056s speed: 36.4877 MOPT/s
+elapse time: 0.000779223s speed: 42.0521 MOPT/s
+elapse time: 0.000783037s speed: 41.8473 MOPT/s
+elapse time: 0.000787757s speed: 41.5966 MOPT/s
+average time: 0.000669906s
+
+data size bits 16
+elapse time: 0.000169909s speed: 385.712 MOPT/s
+elapse time: 0.000843058s speed: 77.7361 MOPT/s
+elapse time: 0.000641965s speed: 102.087 MOPT/s
+elapse time: 0.00065032s speed: 100.775 MOPT/s
+elapse time: 0.000671557s speed: 97.5881 MOPT/s
+average time: 0.000595362s
+
+data size bits 17
+elapse time: 0.000320595s speed: 408.84 MOPT/s
+elapse time: 0.00067141s speed: 195.219 MOPT/s
+elapse time: 0.000428939s speed: 305.573 MOPT/s
+elapse time: 0.000426921s speed: 307.017 MOPT/s
+elapse time: 0.000440638s speed: 297.46 MOPT/s
+average time: 0.000457701s
+
+data size bits 18
+elapse time: 0.000627405s speed: 417.823 MOPT/s
+elapse time: 0.0013479s speed: 194.483 MOPT/s
+elapse time: 0.0015621s speed: 167.815 MOPT/s
+elapse time: 0.00157486s speed: 166.455 MOPT/s
+elapse time: 0.00153246s speed: 171.061 MOPT/s
+average time: 0.00132895s
+
+data size bits 19
+elapse time: 0.00129949s speed: 403.456 MOPT/s
+elapse time: 0.00131554s speed: 398.534 MOPT/s
+elapse time: 0.00126269s speed: 415.215 MOPT/s
+elapse time: 0.0012643s speed: 414.687 MOPT/s
+elapse time: 0.0012612s speed: 415.707 MOPT/s
+average time: 0.00128064s
+
+data size bits 20
+elapse time: 0.00251839s speed: 416.367 MOPT/s
+elapse time: 0.00252187s speed: 415.792 MOPT/s
+elapse time: 0.0025262s speed: 415.08 MOPT/s
+elapse time: 0.00247943s speed: 422.91 MOPT/s
+elapse time: 0.00248472s speed: 422.009 MOPT/s
+average time: 0.00250612s
+
+data size bits 21
+elapse time: 0.0051246s speed: 409.232 MOPT/s
+elapse time: 0.00506648s speed: 413.927 MOPT/s
+elapse time: 0.00522284s speed: 401.535 MOPT/s
+elapse time: 0.00509627s speed: 411.507 MOPT/s
+elapse time: 0.0146628s speed: 429.077 MOPT/s
+average time: 0.00703459s
+
+data size bits 22
+elapse time: 0.0109589s speed: 382.731 MOPT/s
+elapse time: 0.0109112s speed: 384.405 MOPT/s
+elapse time: 0.0109397s speed: 383.403 MOPT/s
+elapse time: 0.0108793s speed: 385.532 MOPT/s
+elapse time: 0.0306263s speed: 410.853 MOPT/s
+average time: 0.0148631s
+
+data size bits 23
+elapse time: 0.0477314s speed: 351.492 MOPT/s
+elapse time: 0.147814s speed: 340.506 MOPT/s
+elapse time: 0.0687114s speed: 366.254 MOPT/s
+elapse time: 0.236885s speed: 354.121 MOPT/s
+elapse time: 0.0686473s speed: 366.596 MOPT/s
+average time: 0.113958s
+
+data size bits 24
+elapse time: 0.0629641s speed: 266.457 MOPT/s
+elapse time: 1.95266s speed: 171.839 MOPT/s
+elapse time: 0.0629834s speed: 266.375 MOPT/s
+elapse time: 0.534986s speed: 250.881 MOPT/s
+elapse time: 1.07468s speed: 249.781 MOPT/s
+average time: 0.737656s
+
+task 1 end
+
+---------------------
+task 2 start
+from file in 0
+from file find0
+insert speed: 224.892MOPT/s
+100% for search time0.0394805s speed: 424.949MOPT/s
+90% for search time0.0448313s speed: 374.23MOPT/s
+80% for search time0.0488503s speed: 343.442MOPT/s
+70% for search time0.049946s speed: 335.907MOPT/s
+60% for search time0.0548019s speed: 306.143MOPT/s
+50% for search time0.0592036s speed: 283.382MOPT/s
+40% for search time0.0638209s speed: 262.879MOPT/s
+30% for search time0.0693534s speed: 241.909MOPT/s
+20% for search time0.073377s speed: 228.644MOPT/s
+10% for search time0.077739s speed: 215.815MOPT/s
+0% for search time0.0825241s speed: 203.301MOPT/s
+
+insert speed: 215.659MOPT/s
+100% for search time0.0374996s speed: 447.398MOPT/s
+90% for search time0.0420578s speed: 398.908MOPT/s
+80% for search time0.0463003s speed: 362.357MOPT/s
+70% for search time0.050822s speed: 330.117MOPT/s
+60% for search time0.0554291s speed: 302.679MOPT/s
+50% for search time0.0599525s speed: 279.842MOPT/s
+40% for search time0.0642748s speed: 261.023MOPT/s
+30% for search time0.0688152s speed: 243.801MOPT/s
+20% for search time0.0733036s speed: 228.873MOPT/s
+10% for search time0.0775561s speed: 216.324MOPT/s
+0% for search time0.0823988s speed: 203.61MOPT/s
+
+insert speed: 225.112MOPT/s
+100% for search time0.0361919s speed: 463.562MOPT/s
+90% for search time0.0409245s speed: 409.955MOPT/s
+80% for search time0.0454049s speed: 369.502MOPT/s
+70% for search time0.0500135s speed: 335.454MOPT/s
+60% for search time0.0545049s speed: 307.811MOPT/s
+50% for search time0.0592689s speed: 283.07MOPT/s
+40% for search time0.0646642s speed: 259.451MOPT/s
+30% for search time0.0683375s speed: 245.505MOPT/s
+20% for search time0.0735553s speed: 228.09MOPT/s
+10% for search time0.0776579s speed: 216.04MOPT/s
+0% for search time0.0823074s speed: 203.836MOPT/s
+
+insert speed: 213.07MOPT/s
+100% for search time0.0368449s speed: 455.348MOPT/s
+90% for search time0.0408813s speed: 410.389MOPT/s
+80% for search time0.0455151s speed: 368.608MOPT/s
+70% for search time0.0501585s speed: 334.484MOPT/s
+60% for search time0.054833s speed: 305.969MOPT/s
+50% for search time0.0593346s speed: 282.756MOPT/s
+40% for search time0.0638953s speed: 262.574MOPT/s
+30% for search time0.0688726s speed: 243.598MOPT/s
+20% for search time0.0731879s speed: 229.235MOPT/s
+10% for search time0.0776689s speed: 216.009MOPT/s
+0% for search time0.0823719s speed: 203.676MOPT/s
+
+insert speed: 223.849MOPT/s
+100% for search time0.0365004s speed: 459.644MOPT/s
+90% for search time0.0408486s speed: 410.717MOPT/s
+80% for search time0.0453129s speed: 370.253MOPT/s
+70% for search time0.0500563s speed: 335.167MOPT/s
+60% for search time0.054548s speed: 307.568MOPT/s
+50% for search time0.0591751s speed: 283.518MOPT/s
+40% for search time0.0647967s speed: 258.921MOPT/s
+30% for search time0.0686546s speed: 244.371MOPT/s
+20% for search time0.0734804s speed: 228.322MOPT/s
+10% for search time0.0776855s speed: 215.963MOPT/s
+0% for search time0.0824354s speed: 203.52MOPT/s
+
+task 2 end
+
+---------------------
+task 3 start
+hash size 18454937 ratio = 1.1
+success times 0.150911s speed: 111.173 MOPT/s
+success times 0.915498s speed: 36.6516 MOPT/s
+success times 0.132343s speed: 126.771 MOPT/s
+success times 0.738478s speed: 45.4373 MOPT/s
+success times 0.133438s speed: 125.731 MOPT/s
+
+hash size 20132659 ratio = 1.2
+success times 0.110255s speed: 152.167 MOPT/s
+success times 0.111s speed: 151.146 MOPT/s
+success times 0.112651s speed: 148.931 MOPT/s
+success times 0.110515s speed: 151.81 MOPT/s
+success times 0.109902s speed: 152.656 MOPT/s
+
+hash size 21810380 ratio = 1.3
+success times 0.101589s speed: 165.147 MOPT/s
+success times 0.195496s speed: 171.638 MOPT/s
+success times 0.099893s speed: 167.952 MOPT/s
+success times 0.102319s speed: 163.97 MOPT/s
+success times 0.101019s speed: 166.079 MOPT/s
+
+hash size 23488102 ratio = 1.4
+success times 0.110405s speed: 151.961 MOPT/s
+success times 0.182483s speed: 183.877 MOPT/s
+success times 0.0937774s speed: 178.905 MOPT/s
+success times 0.118722s speed: 141.315 MOPT/s
+success times 0.122955s speed: 136.45 MOPT/s
+
+hash size 25165824 ratio = 1.5
+success times 0.0896729s speed: 187.093 MOPT/s
+success times 0.0904784s speed: 185.428 MOPT/s
+success times 0.0907722s speed: 184.828 MOPT/s
+success times 0.177837s speed: 188.681 MOPT/s
+success times 0.275841s speed: 182.466 MOPT/s
+
+hash size 26843545 ratio = 1.6
+success times 0.0871111s speed: 192.596 MOPT/s
+success times 0.0847322s speed: 198.003 MOPT/s
+success times 0.0849711s speed: 197.446 MOPT/s
+success times 0.0848263s speed: 197.783 MOPT/s
+success times 0.0852177s speed: 196.875 MOPT/s
+
+hash size 28521267 ratio = 1.7
+success times 0.0817138s speed: 205.317 MOPT/s
+success times 0.0820425s speed: 204.494 MOPT/s
+success times 0.082743s speed: 202.763 MOPT/s
+success times 0.0833827s speed: 201.207 MOPT/s
+success times 0.0836663s speed: 200.525 MOPT/s
+
+hash size 30198988 ratio = 1.8
+success times 0.080165s speed: 209.284 MOPT/s
+success times 0.0790027s speed: 212.362 MOPT/s
+success times 0.0820974s speed: 204.357 MOPT/s
+success times 0.0790413s speed: 212.259 MOPT/s
+success times 0.0790622s speed: 212.203 MOPT/s
+
+hash size 31876710 ratio = 1.9
+success times 0.0766029s speed: 219.015 MOPT/s
+success times 0.0765496s speed: 219.168 MOPT/s
+success times 0.0766172s speed: 218.975 MOPT/s
+success times 0.0764845s speed: 219.354 MOPT/s
+success times 0.0776178s speed: 216.152 MOPT/s
+
+hash size 33554432 ratio = 2
+success times 0.0747427s speed: 224.466 MOPT/s
+success times 0.0771035s speed: 217.593 MOPT/s
+success times 0.0743834s speed: 225.551 MOPT/s
+success times 0.0747863s speed: 224.335 MOPT/s
+success times 0.0744422s speed: 225.372 MOPT/s
+
+hash size 16944988 ratio = 1.01
+not success  times 33.1159s speed: 51.1688 MOPT/s
+not success  times 33.0655s speed: 51.2467 MOPT/s
+not success  times 33.1867s speed: 51.0596 MOPT/s
+not success  times 33.2233s speed: 51.0034 MOPT/s
+not success  times 33.2179s speed: 51.0116 MOPT/s
+
+hash size 17112760 ratio = 1.02
+not success  times 23.5187s speed: 72.0489 MOPT/s
+not success  times 24.2546s speed: 69.8631 MOPT/s
+not success  times 23.6739s speed: 71.5766 MOPT/s
+not success  times 24.3105s speed: 69.7023 MOPT/s
+not success  times 23.7843s speed: 71.2445 MOPT/s
+
+hash size 17616076 ratio = 1.05
+success times 0.573486s speed: 58.5096 MOPT/s
+success times 0.161394s speed: 103.952 MOPT/s
+success times 0.160399s speed: 104.597 MOPT/s
+success times 0.355136s speed: 94.4834 MOPT/s
+success times 0.160782s speed: 104.348 MOPT/s
+
+task 3 end
+
+----------------------
+task 4 start
+evict bound: 24
+time: 0.158042s speed: 212.314 MOPT/s
+time: 0.235176s speed: 214.017 MOPT/s
+time: 0.485181s speed: 207.476 MOPT/s
+time: 0.213903s speed: 156.867 MOPT/s
+time: 0.0855909s speed: 196.016 MOPT/s
+
+evict bound: 48
+time: 0.28985s speed: 115.765 MOPT/s
+time: 0.214798s speed: 156.214 MOPT/s
+time: 0.180852s speed: 185.535 MOPT/s
+time: 0.0815952s speed: 205.615 MOPT/s
+time: 0.0817694s speed: 205.177 MOPT/s
+
+evict bound: 72
+time: 0.0815939s speed: 205.619 MOPT/s
+time: 0.480555s speed: 104.736 MOPT/s
+time: 0.0862659s speed: 194.483 MOPT/s
+time: 0.0816495s speed: 205.478 MOPT/s
+time: 0.416211s speed: 120.928 MOPT/s
+
+evict bound: 96
+time: 0.0824627s speed: 203.452 MOPT/s
+time: 0.0815088s speed: 205.833 MOPT/s
+time: 0.0819061s speed: 204.835 MOPT/s
+time: 0.0814544s speed: 205.971 MOPT/s
+time: 0.0815096s speed: 205.831 MOPT/s
+
+evict bound: 120
+time: 0.299381s speed: 112.079 MOPT/s
+time: 0.086286s speed: 194.437 MOPT/s
+time: 0.081717s speed: 205.309 MOPT/s
+time: 0.344204s speed: 194.968 MOPT/s
+time: 0.16535s speed: 202.93 MOPT/s
+
+evict bound: 144
+time: 0.112244s speed: 149.471 MOPT/s
+time: 0.309898s speed: 216.552 MOPT/s
+time: 0.0817444s speed: 205.24 MOPT/s
+time: 0.19962s speed: 168.092 MOPT/s
+time: 1.73816s speed: 48.2614 MOPT/s
+
+evict bound: 168
+time: 0.234581s speed: 214.56 MOPT/s
+time: 0.0818578s speed: 204.956 MOPT/s
+time: 0.202656s speed: 165.574 MOPT/s
+time: 0.15987s speed: 209.886 MOPT/s
+time: 0.591244s speed: 56.7522 MOPT/s
+
+evict bound: 192
+time: 0.159564s speed: 210.288 MOPT/s
+time: 0.0822933s speed: 203.871 MOPT/s
+time: 0.589454s speed: 85.3869 MOPT/s
+time: 0.165052s speed: 203.297 MOPT/s
+time: 0.0818951s speed: 204.862 MOPT/s
+
+evict bound: 216
+time: 0.0856876s speed: 195.795 MOPT/s
+time: 0.158701s speed: 211.432 MOPT/s
+time: 0.0817137s speed: 205.317 MOPT/s
+time: 0.0820925s speed: 204.37 MOPT/s
+time: 0.0814219s speed: 206.053 MOPT/s
+
+evict bound: 240
+time: 1.1189s speed: 29.9889 MOPT/s
+time: 0.0855868s speed: 196.026 MOPT/s
+time: 0.0820282s speed: 204.53 MOPT/s
+time: 0.0815926s speed: 205.622 MOPT/s
+time: 0.235753s speed: 213.494 MOPT/s
+
+task 4 end

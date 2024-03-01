@@ -401,7 +401,7 @@ void test2()
     uint32_t test_end = 1;
     
 
-    for(auto i = 0; i < 1; i ++)
+    for(auto i = 0; i < 100; i ++)
     {
         Cuckoo_hash hash(table_size, function_num);
 
@@ -574,6 +574,6 @@ void test4()
 int main(int argc, char const *argv[])
 {
 
-    test1();
+    test2();
     return 0;
 }
